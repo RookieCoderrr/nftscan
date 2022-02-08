@@ -1,0 +1,16 @@
+
+mongo:
+  host: "127.0.0.1"
+  # host: "docker.for.mac.host.internal"
+  port: "27017"
+  dbname: "bscChain"
+  database: "bscChain"
+
+redis:
+  host: "127.0.0.1"
+  port: "6390"
+
+
+chain_id: 123123412
+
+
