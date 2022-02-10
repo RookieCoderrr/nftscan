@@ -3,13 +3,11 @@ package api
 import "C"
 import (
 	"bytes"
-	"context"
 	"crypto-colly/common/db"
 	"crypto-colly/models"
 	"encoding/json"
 	"fmt"
 	"github.com/tidwall/gjson"
-	"go.mongodb.org/mongo-driver/bson"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -132,19 +130,19 @@ func (c *Collection)getItem() {
 			fmt.Println(output)
 			continue
 		}
-		contractHash := gjson.Get(string(body),"data.nftInfo.contractAddress").String()
-		filter := bson.M{"contract":contractHash}
-		result := c.db.GetConn().Database("nft").Collection("info").FindOne(context.TODO(),filter)
-		if result.Err() != nil {
-			output := fmt.Sprintf("Nft: %s ProductId: %s hasn't been recorded in db!",contractHash,item)
-			fmt.Println(output)
-		} else {
-			update := bson.M{"$set":bson.M{"ispopular":true}}
-			_,err  := c.db.GetConn().Database("nft").Collection("info").UpdateOne(context.TODO(),filter,update)
-			if err != nil {
-				fmt.Println("update error!")
-			}
-		}
+		//contractHash := gjson.Get(string(body),"data.nftInfo.contractAddress").String()
+		//filter := bson.M{"contract":contractHash}
+		//result := c.db.GetConn().Database("nft").Collection("info").FindOne(context.TODO(),filter)
+		//if result.Err() != nil {
+		//	output := fmt.Sprintf("Nft: %s ProductId: %s hasn't been recorded in db!",contractHash,item)
+		//	fmt.Println(output)
+		//} else {
+		//	update := bson.M{"$set":bson.M{"ispopular":true}}
+		//	_,err  := c.db.GetConn().Database("nft").Collection("info").UpdateOne(context.TODO(),filter,update)
+		//	if err != nil {
+		//		fmt.Println("update error!")
+		//	}
+		//}
 		time.Sleep(time.Duration(100)*time.Millisecond)
 	}
 

@@ -2,14 +2,12 @@ package api
 
 import (
 	"bytes"
-	"context"
-	"crypto-colly/common/db"
 	"crypto-colly/common/redis"
 	"crypto-colly/models"
 	"encoding/json"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/tidwall/gjson"
-	"go.mongodb.org/mongo-driver/bson"
 	"io/ioutil"
 	"log"
 	"math/big"
@@ -27,7 +25,7 @@ type Api struct {
 	chain              *models.Blockchain
 	detailurl			string
 	listurl				string
-	db 					*db.Db
+	db 					*gorm.DB
 	redis              *redis.Redis
 	model              *models.NftContractModel
 	processProductId *big.Int
@@ -36,7 +34,7 @@ type Api struct {
 	startTime          time.Time
 }
 
-func NewApi(chain *models.Blockchain,detailurl string,listurl string, db *db.Db, redis *redis.Redis) *Api {
+func NewApi(chain *models.Blockchain,detailurl string,listurl string, db *gorm.DB, redis *redis.Redis) *Api {
 	return &Api{
 		chain: chain,
 		detailurl: detailurl,
@@ -163,19 +161,19 @@ func (a *Api)crawl(){
 			continue
 		}
 
-		contractHash := gjson.Get(string(body),"data.nftInfo.contractAddress").String()
-		filter := bson.M{"contract":contractHash}
-		result := a.db.GetConn().Database("nft").Collection("info").FindOne(context.TODO(),filter)
-		if result.Err() != nil {
-			output := fmt.Sprintf("Nft: %s ProductId: %s hasn't been recorded in db!",contractHash,a.processProductId)
-			fmt.Println(output)
-		} else {
-			update := bson.M{"$set": bson.M{"$inc": bson.M{"marketplace": 1}}}
-			_,err  := a.db.GetConn().Database("nft").Collection("info").UpdateOne(context.TODO(),filter,update)
-			if err != nil {
-				fmt.Println("update error!")
-			}
-		}
+		//contractHash := gjson.Get(string(body),"data.nftInfo.contractAddress").String()
+		//filter := bson.M{"contract":contractHash}
+		//result := a.db.GetConn().Database("nft").Collection("info").FindOne(context.TODO(),filter)
+		//if result.Err() != nil {
+		//	output := fmt.Sprintf("Nft: %s ProductId: %s hasn't been recorded in db!",contractHash,a.processProductId)
+		//	fmt.Println(output)
+		//} else {
+		//	update := bson.M{"$set": bson.M{"$inc": bson.M{"marketplace": 1}}}
+		//	_,err  := a.db.GetConn().Database("nft").Collection("info").UpdateOne(context.TODO(),filter,update)
+		//	if err != nil {
+		//		fmt.Println("update error!")
+		//	}
+		//}
 		err = a.saveProcessedProductId(a.processProductId)
 		if err != nil {
 			fmt.Sprintf("(%s)[%d]保存处理进度失败: %s\n", a.chain.Name, a.processProductId, err)

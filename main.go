@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto-colly/app"
 	cfg "crypto-colly/common/config"
 	"crypto-colly/common/db"
@@ -16,10 +15,10 @@ func main() {
 	conf := new(setting.Config)
 	cfg.NewConfig(conf).Read(*confFile)
 	redisConn := redis.InitializeRedisLocalClient(&conf.Redis)
-	dbConn, err := db.InitializeMongoLocalClient(context.TODO(),&conf.Db)
+	dbConn, err := db.NewDb(&conf.Db)
 	redisConn.Test()
 	if err != nil {
 		panic(err)
 	}
-	app.NewApp(conf,dbConn,redisConn).Do()
+	app.NewApp(conf,dbConn.GetConn(),redisConn).Do()
 }

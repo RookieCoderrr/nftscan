@@ -1,45 +1,45 @@
 package db
 
 import (
-	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"crypto-colly/models"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 )
 
 type Db struct {
-	conn *mongo.Client
+	conn *gorm.DB
 }
 
 type Config struct {
 	Host string
 	Port string
-	Database string
+	User string
+	Password string
+	DbName string
 }
 
-func InitializeMongoLocalClient(ctx context.Context, config *Config) (*Db, error) {
+func NewDb(options *Config) (*Db, error) {
 	var (
-		db *Db
-		conn *mongo.Client
-		err error
+		db   *Db
+		conn *gorm.DB
+		err  error
 	)
 	db = &Db{}
-	var clientOptions *options.ClientOptions
-	clientOptions = options.Client().ApplyURI("mongodb://" + config.Host + ":" + config.Port + "/" + config.Database)
-	conn, err = mongo.Connect(ctx, clientOptions)
+
+	conn, err = gorm.Open("mysql",
+		options.User+":"+options.Password+"@tcp("+options.Host+":"+options.Port+")/"+options.DbName+
+			"?charset=utf8mb4&parseTime=True&loc=Local&allowNativePasswords=true")
 	if err != nil {
-		fmt.Println("connect mongo error")
-		return nil, err
-	}
-	err = conn.Ping(ctx, nil)
-	if err != nil {
-		fmt.Println("ping mongo error")
+		log.Error(err.Error())
 		return nil, err
 	}
 	db.conn = conn
-	return db,nil
+	conn.AutoMigrate(&models.NFTTransaction{}, &models.NFTAsset{}, &models.NFTTransfer{},&models.NFTContract{})
+
+	return db, nil
 }
 
-func (d *Db) GetConn() *mongo.Client{
+func (d *Db) GetConn() *gorm.DB {
 	return d.conn
 }

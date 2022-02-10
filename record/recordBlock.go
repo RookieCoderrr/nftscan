@@ -3,7 +3,6 @@ package record
 import (
 	"context"
 	"crypto-colly/common/chainutils"
-	"crypto-colly/common/db"
 	"crypto-colly/common/redis"
 	"crypto-colly/contract/erc721"
 	"crypto-colly/models"
@@ -12,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/jinzhu/gorm"
 	"math"
 	"math/big"
 	"strconv"
@@ -25,7 +25,7 @@ const (
 
 type RecordBlock struct {
 	chain              *models.Blockchain
-	db                 *db.Db
+	db                 *gorm.DB
 	redis              *redis.Redis
 	client             *ethclient.Client
 	model              *models.NftContractModel
@@ -35,7 +35,7 @@ type RecordBlock struct {
 	startTime          time.Time
 	startPrefix        int
 }
-func NewRecordBlock(chain *models.Blockchain, db *db.Db, redis *redis.Redis,startPrefix int) *RecordBlock {
+func NewRecordBlock(chain *models.Blockchain, db *gorm.DB, redis *redis.Redis,startPrefix int) *RecordBlock {
 	return &RecordBlock{
 		chain: chain,
 		db: db,
@@ -66,7 +66,7 @@ func (r *RecordBlock) Do(){
 		fmt.Println(output)
 		return
 	}
-	r.processBlockHeight = big.NewInt(7999999)
+	r.processBlockHeight = big.NewInt(int64(r.startPrefix * 1000000))
 	//r.processBlockHeight = lastProcessBlockHeight
 	output = fmt.Sprintf("(%s)开始爬取合约，上次处理块高: %s\n", r.chain.Name, lastProcessBlockHeight.String())
 	fmt.Println(output)
@@ -152,6 +152,7 @@ func (r *RecordBlock) crawl() {
 					continue
 				}
 			}
+
 			r.analyzeNftTransfer(tx,block)
 		}
 
@@ -245,13 +246,14 @@ func (r *RecordBlock)analyzeNftTransfer(tx *types.Transaction, block *types.Bloc
 
 }
 func (r *RecordBlock) recordNftTransfer(log *types.Log)error {
+	fmt.Println(log.TxHash)
 	nftContractHash := log.Address.String()
-	nftAssetId := getTokenId(log.Topics[3].String())
+	nftAssetId := getTokenId(log.Topics[3].String()).String()
 	transactionHash := log.TxHash.String()
 	from := "0x"+log.Topics[1].String()[26:]
 	to := "0x"+log.Topics[2].String()[26:]
 	transfertype := checkType(from,to)
-	err := r.model.CreateNftTransfer(nftContractHash,int64(nftAssetId),transactionHash,from,to,transfertype)
+	_,err := r.model.CreateNftTransfer(nftContractHash,nftAssetId,transactionHash,from,to,transfertype)
 	return err
 }
 
@@ -274,33 +276,29 @@ func (r *RecordBlock) recordNftTransaction(receipt *types.Receipt, block *types.
 	gasLimit := tx.Gas()
 	gasUsedByTransaction := receipt.GasUsed
 	transactionFee,_ := strconv.ParseFloat(fmt.Sprintf("%.8f",  math.Pow(10,-18) *float64(gasUsedByTransaction)*float64(gasPrice)), 64)
-	err = r.model.CreateNftTransaction(transactionHash,blockHeight,timeStamp,from,to,value,gasPrice,gasLimit,gasUsedByTransaction,transactionFee)
+	_,err = r.model.CreateNftTransaction(transactionHash,blockHeight,timeStamp,from,to,value,gasPrice,gasLimit,gasUsedByTransaction,transactionFee)
 	return err
 
 }
 
 func (r *RecordBlock) recordNft(log *types.Log, tx *types.Transaction, block *types.Block) error {
-	nftAssetId := getTokenId(log.Topics[3].String())
+	nftAssetId := getTokenId(log.Topics[3].String()).String()
 	mintTxHash := tx.Hash().String()
 	mintBlockHeight := log.BlockNumber
 	mintTimeStamp := block.Time()
 	creator := "0x"+log.Topics[2].String()[26:]
 	nftContractHash := log.Address.Hex()
 
-	err := r.model.CreateNftAsset(int64(nftAssetId),nftContractHash,mintTxHash,mintBlockHeight,mintTimeStamp,creator)
+	_,err := r.model.CreateNftAsset(nftAssetId,nftContractHash,mintTxHash,mintBlockHeight,mintTimeStamp,creator)
 	return err
 
 }
 
-func getTokenId(string16Hex string) uint32 {
+func getTokenId(string16Hex string) *big.Int {
 	string16 := string16Hex[2:]
-	n, err := strconv.ParseUint(string16, 16, 32)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	n2 := uint32(n)
-	return n2
+	i := new(big.Int)
+	i.SetString(string16, 16)
+	return i
 }
 func checkType(from string, to string) string {
 	if from == "0x0000000000000000000000000000000000000000" {

@@ -1,10 +1,11 @@
 
 mongo:
-  host: "127.0.0.1"
+  host: "localhost"
   # host: "docker.for.mac.host.internal"
-  port: "27017"
+  port: "3306"
+  user: "root"
+  password: "12345678"
   dbname: "bscChain"
-  database: "bscChain"
 
 redis:
   host: "127.0.0.1"
